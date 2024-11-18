@@ -1,0 +1,233 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+
+model User {
+  id                Int               @id @default(autoincrement())
+  email             String            @unique @db.VarChar(255)
+  password          String            @db.VarChar(255)
+  username          String            @unique @db.VarChar(50)
+  userType          UserRole          @default(CUSTOMER)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  address           String            @db.VarChar(255)
+  phoneNumber       String            @db.VarChar(15)
+  photoUrl          String            @db.VarChar(1024)
+  isBanned          Boolean               @default(false)
+
+  
+  reviews           Review[]
+  bookings          Booking[]
+  notifications     Notification[]
+  Conversation Conversation[]
+}
+model ServiceProvider {
+  id                Int               @id @default(autoincrement())
+  
+  email             String            @unique @db.VarChar(255)
+  password          String            @db.VarChar(255)
+  username          String            @db.VarChar(50)
+  certification     String?
+  identityCard      String?
+  photoUrl          String?           @db.VarChar(1024)
+  city              City              @default(TUNIS)
+  phoneNumber       String?           @db.VarChar(15)
+  birthDate         DateTime?
+  rating            Decimal?          @default(0.0) @db.Decimal(3, 2)
+  isAvailable       Boolean           @default(false)
+  isBanned          Boolean           @default(false)
+  
+  services          Service[]
+  reviews           Review[]          @relation("ProviderReviews")
+  bookings          Booking[]
+  schedule          Schedule[]
+  notifications     Notification[]
+  Conversation Conversation[]
+}
+
+enum City {
+  TUNIS
+  SFAX
+  SOUSSE
+  KAIROUAN
+  BIZERTE
+  GABES
+  ARIANA
+  GAFSA
+  MONASTIR
+  BEN_AROUS
+  KASSERINE
+  MEDENINE
+  NABEUL
+  TATAOUINE
+  BEJA
+  JENDOUBA
+  MAHDIA
+  SILIANA
+  KEF
+  TOZEUR
+  MANOUBA
+  ZAGHOUAN
+  KEBILI
+}
+
+model Service {
+  id                Int               @id @default(autoincrement())
+  name              String            @db.VarChar(255)
+  description       String            @db.Text
+  price             Decimal           @db.Decimal(10, 2)
+  duration          Int
+  providerId        Int
+  categoryId        Int
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  isActive          Boolean           @default(true)
+  image             String            @default("")
+
+  provider          ServiceProvider   @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  category          Category          @relation(fields: [categoryId], references: [id])
+  reviews           Review[]
+  bookings          Booking[]
+}
+
+model Booking {
+  id                Int               @id @default(autoincrement())
+  userId            Int
+  serviceId         Int
+  providerId        Int
+  bookingDate       DateTime
+  status            BookingStatus     @default(PENDING)
+  notes             String?           @db.Text
+  totalPrice        Decimal           @db.Decimal(10, 2)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  service           Service           @relation(fields: [serviceId], references: [id])
+  provider          ServiceProvider   @relation(fields: [providerId], references: [id])
+  payments          Payment[]
+}
+
+model Review {
+  id                Int               @id @default(autoincrement())
+  serviceId         Int
+  userId            Int
+  providerId        Int
+  rating            Int               @db.Integer
+  comment           String?           @db.Text
+  createdAt         DateTime          @default(now())
+
+  service           Service           @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          ServiceProvider   @relation("ProviderReviews", fields: [providerId], references: [id], onDelete: Cascade)
+}
+
+model Category {
+  id                Int               @id @default(autoincrement())
+  image             String            @default("")
+
+  name              String            @unique @db.VarChar(50)
+  description       String?           @db.Text
+  services          Service[]
+  
+}
+
+
+model Schedule {
+  id                Int               @id @default(autoincrement())
+  providerId        Int
+  dayOfWeek         Int
+  startTime         DateTime
+  endTime           DateTime
+  isAvailable       Boolean           @default(true)
+
+  provider          ServiceProvider   @relation(fields: [providerId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id                Int               @id @default(autoincrement())
+  bookingId         Int
+  amount            Decimal           @db.Decimal(10, 2)
+  status            PaymentStatus     @default(PENDING)
+  paymentMethod     PaymentMethod
+  transactionId     String?           @db.VarChar(255)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  booking           Booking           @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id                Int               @id @default(autoincrement())
+  userId            Int
+  providerId        Int?
+  title             String            @db.VarChar(255)
+  message           String            @db.Text
+  isRead            Boolean           @default(false)
+  createdAt         DateTime          @default(now())
+
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          ServiceProvider?  @relation(fields: [providerId], references: [id], onDelete: Cascade)
+}
+model Conversation {
+  id        Int       @id @default(autoincrement())
+  providerId  Int
+  provider    ServiceProvider    @relation(fields: [providerId], references: [id])
+  UserId Int
+  User      User      @relation(fields: [UserId], references: [id])
+  messages  Message[]
+
+  @@unique([ providerId, UserId])
+}
+
+model Message {
+  id             Int          @id @default(autoincrement())
+  content        String
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  conversationId Int
+  sender         String
+  isRead        Boolean      @default(false)
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+  PROVIDER
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  REJECTED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  ONLINE
+  CASH
+}
